@@ -1524,6 +1524,211 @@ body::before{
   *{animation-duration:0.01ms!important;transition-duration:0.01ms!important;}
 }
 </style>
+<!-- ══ FIREBASE SDK ══ -->
+<script type="module">
+/* ════════════════════════════════════════════
+   FIREBASE INIT — Technopalm
+════════════════════════════════════════════ */
+import { initializeApp }                        from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-app.js';
+import { getAnalytics }                         from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-analytics.js';
+import {
+  getAuth,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signInWithPopup,
+  GoogleAuthProvider,
+  signOut,
+  updateProfile as fbUpdateProfile
+} from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-auth.js';
+import {
+  getFirestore,
+  doc, setDoc, getDoc, updateDoc,
+  collection, addDoc, getDocs, query, where, orderBy
+} from 'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey:            "AIzaSyAcyBGhZU9gmtMlhLkerBskYnoCn6y-ezA",
+  authDomain:        "technopalm.firebaseapp.com",
+  projectId:         "technopalm",
+  storageBucket:     "technopalm.firebasestorage.app",
+  messagingSenderId: "113693334554",
+  appId:             "1:113693334554:web:21071eb869a9a6d8e2c5a3",
+  measurementId:     "G-159ZPJ6X5P"
+};
+
+const _app       = initializeApp(firebaseConfig);
+const _analytics = getAnalytics(_app);
+const _auth      = getAuth(_app);
+const _db        = getFirestore(_app);
+const _googleProvider = new GoogleAuthProvider();
+
+/* ─── Helper: build safe user object from Firebase user ─── */
+function _buildUser(fbUser) {
+  return {
+    id:        fbUser.uid,
+    name:      fbUser.displayName || fbUser.email.split('@')[0],
+    email:     fbUser.email,
+    avatar:    fbUser.photoURL ||
+               `https://ui-avatars.com/api/?name=${encodeURIComponent(fbUser.displayName||fbUser.email)}&background=1a4a2e&color=e2c97e&bold=true&size=128`,
+    provider:  fbUser.providerData[0]?.providerId || 'password',
+    createdAt: fbUser.metadata.creationTime
+  };
+}
+
+/* ─── Auth state listener — syncs Firebase session with Store ─── */
+onAuthStateChanged(_auth, async fbUser => {
+  if (fbUser) {
+    const user = _buildUser(fbUser);
+    // Merge Firestore profile if exists
+    try {
+      const snap = await getDoc(doc(_db, 'users', fbUser.uid));
+      if (snap.exists()) Object.assign(user, snap.data());
+    } catch(e) {}
+    window.__fbUser = fbUser;
+    // Only update store if not already set (avoids loop)
+    if (!Store.getState('user') || Store.getState('user').id !== user.id) {
+      Store.setState('user', user);
+    }
+  } else {
+    window.__fbUser = null;
+    if (Store.getState('user')) Store.setState('user', null);
+  }
+});
+
+/* ════════════════════════════════════════════
+   REPLACE AuthService with Firebase-backed version
+════════════════════════════════════════════ */
+window.AuthService = {
+
+  /* ── Email/Password register ── */
+  register: async ({ name, email, password }) => {
+    try {
+      const cred = await createUserWithEmailAndPassword(_auth, email, password);
+      await fbUpdateProfile(cred.user, {
+        displayName: name,
+        photoURL: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1a4a2e&color=e2c97e&bold=true&size=128`
+      });
+      // Save to Firestore
+      await setDoc(doc(_db, 'users', cred.user.uid), {
+        name, email,
+        avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1a4a2e&color=e2c97e&bold=true&size=128`,
+        createdAt: new Date().toISOString()
+      });
+      const user = _buildUser(cred.user);
+      user.name = name;
+      Store.setState('user', user);
+      return { ok: true, user };
+    } catch(e) {
+      const msgs = {
+        'auth/email-already-in-use': 'البريد الإلكتروني مسجل مسبقًا.',
+        'auth/invalid-email':        'بريد إلكتروني غير صالح.',
+        'auth/weak-password':        'كلمة المرور ضعيفة جدًا. استخدم 6 أحرف على الأقل.'
+      };
+      return { ok: false, error: msgs[e.code] || e.message };
+    }
+  },
+
+  /* ── Email/Password login ── */
+  login: async ({ email, password }) => {
+    try {
+      const cred = await signInWithEmailAndPassword(_auth, email, password);
+      const user = _buildUser(cred.user);
+      Store.setState('user', user);
+      return { ok: true, user };
+    } catch(e) {
+      const msgs = {
+        'auth/user-not-found':   'لا يوجد حساب بهذا البريد الإلكتروني.',
+        'auth/wrong-password':   'كلمة المرور غير صحيحة.',
+        'auth/invalid-email':    'بريد إلكتروني غير صالح.',
+        'auth/invalid-credential': 'بريد إلكتروني أو كلمة مرور غير صحيحة.'
+      };
+      return { ok: false, error: msgs[e.code] || 'حدث خطأ. حاول مرة أخرى.' };
+    }
+  },
+
+  /* ── Google login ── */
+  googleLogin: async () => {
+    try {
+      const result = await signInWithPopup(_auth, _googleProvider);
+      const fbUser = result.user;
+      // Save/update in Firestore
+      await setDoc(doc(_db, 'users', fbUser.uid), {
+        name:      fbUser.displayName,
+        email:     fbUser.email,
+        avatar:    fbUser.photoURL,
+        provider:  'google',
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+      const user = _buildUser(fbUser);
+      Store.setState('user', user);
+      return { ok: true, user };
+    } catch(e) {
+      if(e.code === 'auth/popup-closed-by-user') return { ok: false, error: 'تم إغلاق نافذة تسجيل الدخول.' };
+      return { ok: false, error: 'فشل تسجيل الدخول عبر Google.' };
+    }
+  },
+
+  /* ── Logout ── */
+  logout: async () => {
+    await signOut(_auth);
+    Store.setState('user', null);
+    Store.setState('cart', []);
+    if(typeof UI !== 'undefined') UI.showToast('تم تسجيل الخروج بنجاح.', 'info');
+    setTimeout(() => { if(typeof navigate !== 'undefined') navigate('home'); }, 800);
+  },
+
+  /* ── Update profile ── */
+  updateProfile: async ({ name }) => {
+    const user = Store.getState('user');
+    if (!user) return { ok: false, error: 'غير مسجل الدخول.' };
+    try {
+      const fbUser = window.__fbUser;
+      const newAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name||user.name)}&background=1a4a2e&color=e2c97e&bold=true&size=128`;
+      if (fbUser) await fbUpdateProfile(fbUser, { displayName: name });
+      await updateDoc(doc(_db, 'users', user.id), { name, avatar: newAvatar });
+      const updated = { ...user, name: name||user.name, avatar: newAvatar };
+      Store.setState('user', updated);
+      return { ok: true, user: updated };
+    } catch(e) {
+      return { ok: false, error: 'فشل تحديث البيانات.' };
+    }
+  },
+
+  isLoggedIn: () => !!Store.getState('user'),
+
+  /* ── Save order to Firestore ── */
+  saveOrder: async (order) => {
+    const user = Store.getState('user');
+    if (!user) return;
+    try {
+      await addDoc(collection(_db, 'orders'), {
+        ...order,
+        userId: user.id,
+        createdAt: new Date().toISOString()
+      });
+    } catch(e) { console.warn('Order save failed:', e); }
+  },
+
+  /* ── Load orders from Firestore ── */
+  loadOrders: async () => {
+    const user = Store.getState('user');
+    if (!user) return [];
+    try {
+      const q = query(
+        collection(_db, 'orders'),
+        where('userId', '==', user.id),
+        orderBy('createdAt', 'desc')
+      );
+      const snap = await getDocs(q);
+      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    } catch(e) { return []; }
+  }
+};
+
+console.log('%c🌴 Technopalm Firebase Connected', 'color:#c9a84c;font-weight:bold;font-size:13px;');
+</script>
+<!-- ══ END FIREBASE ══ -->
 </head>
 <body>
 
@@ -2313,52 +2518,29 @@ const CartService = (() => {
 /* ════════════════════════════════
    AUTH SERVICE
 ════════════════════════════════ */
-const AuthService = (() => {
-  const UK = 'agri_users';
-  const _getUsers = () => { try { return JSON.parse(localStorage.getItem(UK)||'[]'); } catch { return []; } };
-  const _saveUsers = u => localStorage.setItem(UK, JSON.stringify(u));
-  const register = ({ name, email, password }) => {
-    const users = _getUsers();
-    if(users.find(u => u.email === email)) return { ok:false, error:'البريد الإلكتروني مسجل مسبقًا.' };
-    const user = { id:'u_'+Date.now(), name, email, password:btoa(password), avatar:`https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1a4a2e&color=e2c97e&bold=true&size=128`, createdAt:new Date().toISOString() };
-    users.push(user); _saveUsers(users);
-    const { password:_, ...safe } = user;
-    return { ok:true, user:safe };
-  };
-  const login = ({ email, password }) => {
-    const users = _getUsers();
-    const user = users.find(u => u.email === email && u.password === btoa(password));
-    if(!user) return { ok:false, error:'بريد إلكتروني أو كلمة مرور غير صحيحة.' };
-    const { password:_, ...safe } = user;
-    Store.setState('user', safe);
-    return { ok:true, user:safe };
-  };
-  const logout = () => {
-    Store.setState('user', null);
-    Store.setState('cart', []);
-    UI.showToast('تم تسجيل الخروج بنجاح.', 'info');
-    setTimeout(() => navigate('home'), 800);
-  };
-  const updateProfile = ({ name }) => {
-    const user = Store.getState('user');
-    if(!user) return { ok:false, error:'غير مسجل الدخول.' };
-    const users = _getUsers();
-    const idx = users.findIndex(u => u.id === user.id);
-    if(idx === -1) return { ok:false, error:'المستخدم غير موجود.' };
-    if(name) users[idx].name = name;
-    _saveUsers(users);
-    const updated = { ...user, name:name||user.name, avatar:`https://ui-avatars.com/api/?name=${encodeURIComponent(name||user.name)}&background=1a4a2e&color=e2c97e&bold=true&size=128` };
-    Store.setState('user', updated);
-    return { ok:true, user:updated };
-  };
-  const isLoggedIn = () => !!Store.getState('user');
-  const googleLogin = () => {
-    const u = { id:'g_'+Date.now(), name:'Alex Johnson', email:'alex.johnson@gmail.com', avatar:'https://ui-avatars.com/api/?name=Alex+Johnson&background=1a4a2e&color=e2c97e&bold=true&size=128', provider:'google', createdAt:new Date().toISOString() };
-    Store.setState('user', u);
-    return { ok:true, user:u };
-  };
-  return { register, login, logout, updateProfile, isLoggedIn, googleLogin };
-})();
+/* ════════════════════════════════
+   AUTH SERVICE — Firebase proxy
+   (real implementation loaded from Firebase module in <head>)
+════════════════════════════════ */
+const AuthService = new Proxy({}, {
+  get(_, prop) {
+    // Firebase module sets window.AuthService once loaded
+    const svc = window.AuthService;
+    if (svc && typeof svc[prop] !== 'undefined') return svc[prop].bind ? svc[prop].bind(svc) : svc[prop];
+    // Fallback stubs before Firebase loads
+    if (prop === 'isLoggedIn') return () => !!Store.getState('user');
+    if (prop === 'logout') return async () => { Store.setState('user', null); navigate('home'); };
+    // For async methods, return a function that waits for Firebase
+    return async (...args) => {
+      // Wait up to 5s for Firebase module
+      for(let i=0;i<50;i++){
+        if(window.AuthService) return window.AuthService[prop](...args);
+        await new Promise(r => setTimeout(r, 100));
+      }
+      return { ok:false, error:'لم يتم الاتصال بالخادم. تحقق من الإنترنت.' };
+    };
+  }
+});
 
 /* ════════════════════════════════
    ORDERS SERVICE
@@ -2716,31 +2898,47 @@ function initLogin() {
       registerForm.classList.toggle('hidden', mode !== 'register');
     };
   });
-  loginForm.onsubmit = e => {
+
+  loginForm.onsubmit = async e => {
     e.preventDefault();
-    const email = loginForm.querySelector('[name=email]').value;
+    const btn = loginForm.querySelector('button[type=submit]');
+    const email    = loginForm.querySelector('[name=email]').value.trim();
     const password = loginForm.querySelector('[name=password]').value;
-    const r = AuthService.login({ email, password });
+    if(btn){ btn.disabled=true; btn.textContent='جارٍ التحقق...'; }
+    const r = await AuthService.login({ email, password });
+    if(btn){ btn.disabled=false; btn.textContent='تسجيل الدخول'; }
     if(r.ok) { UI.showToast(`أهلًا بك مجددًا، ${r.user.name}!`, 'success'); setTimeout(() => navigate('profile'), 800); }
     else UI.showToast(r.error, 'error');
   };
-  registerForm.onsubmit = e => {
+
+  registerForm.onsubmit = async e => {
     e.preventDefault();
-    const name = registerForm.querySelector('[name=name]').value;
-    const email = registerForm.querySelector('[name=email]').value;
+    const btn      = registerForm.querySelector('button[type=submit]');
+    const name     = registerForm.querySelector('[name=name]').value.trim();
+    const email    = registerForm.querySelector('[name=email]').value.trim();
     const password = registerForm.querySelector('[name=password]').value;
-    const confirm = registerForm.querySelector('[name=confirm]').value;
+    const confirm  = registerForm.querySelector('[name=confirm]').value;
     if(password !== confirm) { UI.showToast('كلمتا المرور غير متطابقتين.', 'error'); return; }
-    if(password.length < 6) { UI.showToast('كلمة المرور يجب أن تكون 6 أحرف على الأقل.', 'error'); return; }
-    const rr = AuthService.register({ name, email, password });
+    if(password.length < 6)  { UI.showToast('كلمة المرور يجب أن تكون 6 أحرف على الأقل.', 'error'); return; }
+    if(btn){ btn.disabled=true; btn.textContent='جارٍ إنشاء الحساب...'; }
+    const rr = await AuthService.register({ name, email, password });
+    if(btn){ btn.disabled=false; btn.textContent='إنشاء الحساب'; }
     if(!rr.ok) { UI.showToast(rr.error, 'error'); return; }
-    const lr = AuthService.login({ email, password });
-    if(lr.ok) { UI.showToast(`مرحبًا بك في Technopalm، ${name}!`, 'success'); setTimeout(() => navigate('profile'), 800); }
-  };
-  document.getElementById('btn-google')?.addEventListener('click', () => {
-    const r = AuthService.googleLogin();
-    UI.showToast(`مرحبًا، ${r.user.name}!`, 'success');
+    UI.showToast(`مرحبًا بك في Technopalm، ${name}!`, 'success');
     setTimeout(() => navigate('profile'), 800);
+  };
+
+  document.getElementById('btn-google')?.addEventListener('click', async () => {
+    const btn = document.getElementById('btn-google');
+    if(btn){ btn.disabled=true; btn.style.opacity='0.7'; }
+    const r = await AuthService.googleLogin();
+    if(btn){ btn.disabled=false; btn.style.opacity='1'; }
+    if(r.ok) {
+      UI.showToast(`مرحبًا، ${r.user.name}! 🌴`, 'success');
+      setTimeout(() => navigate('profile'), 800);
+    } else {
+      UI.showToast(r.error, 'error');
+    }
   });
 }
 
@@ -2755,12 +2953,20 @@ function initProfile() {
   document.getElementById('edit-email-disabled').value = user.email;
   _renderOrders();
   Store.subscribe('orders', _renderOrders);
-  document.getElementById('edit-profile-form')?.addEventListener('submit', e => {
+  document.getElementById('edit-profile-form')?.addEventListener('submit', async e => {
     e.preventDefault();
     const name = document.getElementById('edit-name').value.trim();
     if(!name) { UI.showToast('الاسم لا يمكن أن يكون فارغًا.', 'error'); return; }
-    const r = AuthService.updateProfile({ name });
-    if(r.ok) { document.getElementById('profile-name').textContent = name; document.getElementById('profile-avatar').src = r.user.avatar; document.getElementById('profile-avatar-preview').src = r.user.avatar; UI.showToast('تم تحديث الملف الشخصي!', 'success'); }
+    const btn = e.target.querySelector('button[type=submit]');
+    if(btn){ btn.disabled=true; btn.textContent='جارٍ الحفظ...'; }
+    const r = await AuthService.updateProfile({ name });
+    if(btn){ btn.disabled=false; btn.textContent='حفظ التغييرات'; }
+    if(r.ok) {
+      document.getElementById('profile-name').textContent = name;
+      document.getElementById('profile-avatar').src = r.user.avatar;
+      document.getElementById('profile-avatar-preview').src = r.user.avatar;
+      UI.showToast('تم تحديث الملف الشخصي!', 'success');
+    } else { UI.showToast(r.error, 'error'); }
   });
   document.getElementById('btn-logout')?.addEventListener('click', AuthService.logout);
   document.getElementById('btn-open-settings')?.addEventListener('click', openDrawer);
