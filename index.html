@@ -1577,22 +1577,30 @@ function _buildUser(fbUser) {
 }
 
 /* ─── Auth state listener — syncs Firebase session with Store ─── */
+/* flag to suppress onAuthStateChanged during manual operations */
+window.__authBusy = false;
+
 onAuthStateChanged(_auth, async fbUser => {
+  // Skip if we're in the middle of a manual login/logout/register
+  if (window.__authBusy) return;
+
   if (fbUser) {
     const user = _buildUser(fbUser);
-    // Merge Firestore profile if exists
     try {
       const snap = await getDoc(doc(_db, 'users', fbUser.uid));
       if (snap.exists()) Object.assign(user, snap.data());
     } catch(e) {}
     window.__fbUser = fbUser;
-    // Only update store if not already set (avoids loop)
-    if (!Store.getState('user') || Store.getState('user').id !== user.id) {
-      Store.setState('user', user);
+    // Only sync if no user in store yet (e.g. page refresh)
+    const current = window.Store?.getState('user');
+    if (!current) {
+      window.Store?.setState('user', user);
     }
   } else {
     window.__fbUser = null;
-    if (Store.getState('user')) Store.setState('user', null);
+    // Only clear if we have a user (not already cleared)
+    const current = window.Store?.getState('user');
+    if (current) window.Store?.setState('user', null);
   }
 });
 
@@ -1603,13 +1611,13 @@ window.AuthService = {
 
   /* ── Email/Password register ── */
   register: async ({ name, email, password }) => {
+    window.__authBusy = true;
     try {
       const cred = await createUserWithEmailAndPassword(_auth, email, password);
       await fbUpdateProfile(cred.user, {
         displayName: name,
         photoURL: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1a4a2e&color=e2c97e&bold=true&size=128`
       });
-      // Save to Firestore
       await setDoc(doc(_db, 'users', cred.user.uid), {
         name, email,
         avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1a4a2e&color=e2c97e&bold=true&size=128`,
@@ -1626,33 +1634,44 @@ window.AuthService = {
         'auth/weak-password':        'كلمة المرور ضعيفة جدًا. استخدم 6 أحرف على الأقل.'
       };
       return { ok: false, error: msgs[e.code] || e.message };
+    } finally {
+      setTimeout(() => { window.__authBusy = false; }, 1500);
     }
   },
 
   /* ── Email/Password login ── */
   login: async ({ email, password }) => {
+    window.__authBusy = true;
     try {
       const cred = await signInWithEmailAndPassword(_auth, email, password);
       const user = _buildUser(cred.user);
+      // Merge Firestore profile
+      try {
+        const snap = await getDoc(doc(_db, 'users', cred.user.uid));
+        if (snap.exists()) Object.assign(user, snap.data());
+      } catch(e) {}
+      window.__fbUser = cred.user;
       Store.setState('user', user);
       return { ok: true, user };
     } catch(e) {
       const msgs = {
-        'auth/user-not-found':   'لا يوجد حساب بهذا البريد الإلكتروني.',
-        'auth/wrong-password':   'كلمة المرور غير صحيحة.',
-        'auth/invalid-email':    'بريد إلكتروني غير صالح.',
+        'auth/user-not-found':     'لا يوجد حساب بهذا البريد الإلكتروني.',
+        'auth/wrong-password':     'كلمة المرور غير صحيحة.',
+        'auth/invalid-email':      'بريد إلكتروني غير صالح.',
         'auth/invalid-credential': 'بريد إلكتروني أو كلمة مرور غير صحيحة.'
       };
       return { ok: false, error: msgs[e.code] || 'حدث خطأ. حاول مرة أخرى.' };
+    } finally {
+      setTimeout(() => { window.__authBusy = false; }, 1500);
     }
   },
 
   /* ── Google login ── */
   googleLogin: async () => {
+    window.__authBusy = true;
     try {
       const result = await signInWithPopup(_auth, _googleProvider);
       const fbUser = result.user;
-      // Save/update in Firestore
       await setDoc(doc(_db, 'users', fbUser.uid), {
         name:      fbUser.displayName,
         email:     fbUser.email,
@@ -1661,21 +1680,31 @@ window.AuthService = {
         updatedAt: new Date().toISOString()
       }, { merge: true });
       const user = _buildUser(fbUser);
+      window.__fbUser = fbUser;
       Store.setState('user', user);
       return { ok: true, user };
     } catch(e) {
       if(e.code === 'auth/popup-closed-by-user') return { ok: false, error: 'تم إغلاق نافذة تسجيل الدخول.' };
       return { ok: false, error: 'فشل تسجيل الدخول عبر Google.' };
+    } finally {
+      setTimeout(() => { window.__authBusy = false; }, 1500);
     }
   },
 
   /* ── Logout ── */
   logout: async () => {
-    await signOut(_auth);
+    window.__authBusy = true;
+    try {
+      await signOut(_auth);
+    } catch(e) {}
+    window.__fbUser = null;
     Store.setState('user', null);
     Store.setState('cart', []);
     if(typeof UI !== 'undefined') UI.showToast('تم تسجيل الخروج بنجاح.', 'info');
-    setTimeout(() => { if(typeof navigate !== 'undefined') navigate('home'); }, 800);
+    setTimeout(() => {
+      window.__authBusy = false;
+      if(typeof navigate !== 'undefined') navigate('home');
+    }, 800);
   },
 
   /* ── Update profile ── */
@@ -2886,60 +2915,88 @@ function initCheckout() {
 }
 
 function initLogin() {
+  // If already logged in, go to profile immediately
   if(AuthService.isLoggedIn()) { navigate('profile'); return; }
-  const tabs = document.querySelectorAll('#page-login .auth-tab');
-  const loginForm = document.getElementById('login-form');
+
+  const tabs         = document.querySelectorAll('#page-login .auth-tab');
+  const loginForm    = document.getElementById('login-form');
   const registerForm = document.getElementById('register-form');
+  const googleBtn    = document.getElementById('btn-google');
+
+  // ── Guard: remove old listeners by cloning elements ──
+  const newLoginForm    = loginForm.cloneNode(true);
+  const newRegisterForm = registerForm.cloneNode(true);
+  const newGoogleBtn    = googleBtn?.cloneNode(true);
+  loginForm.replaceWith(newLoginForm);
+  registerForm.replaceWith(newRegisterForm);
+  if(googleBtn && newGoogleBtn) googleBtn.replaceWith(newGoogleBtn);
+
+  // Re-grab fresh references
+  const lf = document.getElementById('login-form');
+  const rf = document.getElementById('register-form');
+  const gb = document.getElementById('btn-google');
+
+  // Tab switching
   tabs.forEach(tab => {
     tab.onclick = () => {
-      tabs.forEach(t => t.classList.remove('active')); tab.classList.add('active');
-      const mode = tab.dataset.tab;
-      loginForm.classList.toggle('hidden', mode !== 'login');
-      registerForm.classList.toggle('hidden', mode !== 'register');
+      tabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      lf.classList.toggle('hidden', tab.dataset.tab !== 'login');
+      rf.classList.toggle('hidden', tab.dataset.tab !== 'register');
     };
   });
 
-  loginForm.onsubmit = async e => {
+  // ── Login form ──
+  lf.onsubmit = async e => {
     e.preventDefault();
-    const btn = loginForm.querySelector('button[type=submit]');
-    const email    = loginForm.querySelector('[name=email]').value.trim();
-    const password = loginForm.querySelector('[name=password]').value;
-    if(btn){ btn.disabled=true; btn.textContent='جارٍ التحقق...'; }
+    const btn      = lf.querySelector('button[type=submit]');
+    const email    = lf.querySelector('[name=email]').value.trim();
+    const password = lf.querySelector('[name=password]').value;
+    if(!email || !password) { UI.showToast('يرجى ملء جميع الحقول.', 'error'); return; }
+    if(btn) { btn.disabled = true; btn.textContent = 'جارٍ التحقق...'; }
     const r = await AuthService.login({ email, password });
-    if(btn){ btn.disabled=false; btn.textContent='تسجيل الدخول'; }
-    if(r.ok) { UI.showToast(`أهلًا بك مجددًا، ${r.user.name}!`, 'success'); setTimeout(() => navigate('profile'), 800); }
-    else UI.showToast(r.error, 'error');
-  };
-
-  registerForm.onsubmit = async e => {
-    e.preventDefault();
-    const btn      = registerForm.querySelector('button[type=submit]');
-    const name     = registerForm.querySelector('[name=name]').value.trim();
-    const email    = registerForm.querySelector('[name=email]').value.trim();
-    const password = registerForm.querySelector('[name=password]').value;
-    const confirm  = registerForm.querySelector('[name=confirm]').value;
-    if(password !== confirm) { UI.showToast('كلمتا المرور غير متطابقتين.', 'error'); return; }
-    if(password.length < 6)  { UI.showToast('كلمة المرور يجب أن تكون 6 أحرف على الأقل.', 'error'); return; }
-    if(btn){ btn.disabled=true; btn.textContent='جارٍ إنشاء الحساب...'; }
-    const rr = await AuthService.register({ name, email, password });
-    if(btn){ btn.disabled=false; btn.textContent='إنشاء الحساب'; }
-    if(!rr.ok) { UI.showToast(rr.error, 'error'); return; }
-    UI.showToast(`مرحبًا بك في Technopalm، ${name}!`, 'success');
-    setTimeout(() => navigate('profile'), 800);
-  };
-
-  document.getElementById('btn-google')?.addEventListener('click', async () => {
-    const btn = document.getElementById('btn-google');
-    if(btn){ btn.disabled=true; btn.style.opacity='0.7'; }
-    const r = await AuthService.googleLogin();
-    if(btn){ btn.disabled=false; btn.style.opacity='1'; }
+    if(btn) { btn.disabled = false; btn.textContent = 'تسجيل الدخول'; }
     if(r.ok) {
-      UI.showToast(`مرحبًا، ${r.user.name}! 🌴`, 'success');
-      setTimeout(() => navigate('profile'), 800);
+      UI.showToast(`أهلًا بك مجددًا، ${r.user.name}! 👋`, 'success');
+      setTimeout(() => navigate('profile'), 900);
     } else {
       UI.showToast(r.error, 'error');
     }
-  });
+  };
+
+  // ── Register form ──
+  rf.onsubmit = async e => {
+    e.preventDefault();
+    const btn      = rf.querySelector('button[type=submit]');
+    const name     = rf.querySelector('[name=name]').value.trim();
+    const email    = rf.querySelector('[name=email]').value.trim();
+    const password = rf.querySelector('[name=password]').value;
+    const confirm  = rf.querySelector('[name=confirm]').value;
+    if(!name || !email || !password) { UI.showToast('يرجى ملء جميع الحقول.', 'error'); return; }
+    if(password !== confirm) { UI.showToast('كلمتا المرور غير متطابقتين.', 'error'); return; }
+    if(password.length < 6)  { UI.showToast('كلمة المرور يجب أن تكون 6 أحرف على الأقل.', 'error'); return; }
+    if(btn) { btn.disabled = true; btn.textContent = 'جارٍ إنشاء الحساب...'; }
+    const rr = await AuthService.register({ name, email, password });
+    if(btn) { btn.disabled = false; btn.textContent = 'إنشاء الحساب'; }
+    if(!rr.ok) { UI.showToast(rr.error, 'error'); return; }
+    UI.showToast(`مرحبًا بك في Technopalm، ${name}! 🌴`, 'success');
+    setTimeout(() => navigate('profile'), 900);
+  };
+
+  // ── Google login ──
+  if(gb) {
+    gb.onclick = async () => {
+      gb.disabled = true; gb.style.opacity = '0.7';
+      const r = await AuthService.googleLogin();
+      gb.disabled = false; gb.style.opacity = '1';
+      if(r.ok) {
+        UI.showToast(`مرحبًا، ${r.user.name}! 🌴`, 'success');
+        setTimeout(() => navigate('profile'), 900);
+      } else if(r.error) {
+        UI.showToast(r.error, 'error');
+      }
+    };
+  }
 }
 
 function initProfile() {
