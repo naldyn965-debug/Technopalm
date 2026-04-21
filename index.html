@@ -186,16 +186,20 @@ body::before{
   -webkit-background-clip:text;
   -webkit-text-fill-color:transparent;
   background-clip:text;
+  white-space:nowrap;display:block;
 }
 .nav-wordmark-sub{
   font-family:'DM Sans', system-ui, sans-serif;
   font-size:0.56rem;
   font-weight:600;
-  letter-spacing:0.22em;
+  letter-spacing:0.20em;
   text-transform:uppercase;
   color:var(--c-gold);
   line-height:1;
   -webkit-text-fill-color:var(--c-gold);
+  white-space:nowrap;display:block;
+  /* stretch to full parent width so it right-aligns flush with name */
+  width:100%;text-align:right;
 }
 
 /* Divider between brand and cart */
@@ -268,67 +272,35 @@ body::before{
 .menu-toggle.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg);}
 
 /* ══════════════════════════════════════════
-   BUTTONS
+   BUTTONS — base only (variants defined in ANIMATIONS block)
 ══════════════════════════════════════════ */
 .btn{
   display:inline-flex;align-items:center;justify-content:center;gap:8px;
   padding:12px 26px;border-radius:var(--r-md);
   font-size:0.93rem;font-weight:600;font-family:var(--f-arabic);
-  transition:transform var(--t-fast),box-shadow var(--t-fast),background var(--t-fast);
   cursor:pointer;border:none;white-space:nowrap;
   position:relative;overflow:hidden;
   -webkit-user-select:none;user-select:none;
+  /* base transition — variants override */
+  transition:transform var(--t-fast),box-shadow var(--t-fast),background var(--t-fast),filter var(--t-fast);
 }
+/* Ripple ink effect */
 .btn::after{
   content:'';position:absolute;
   width:0;height:0;border-radius:50%;
-  background:rgba(255,255,255,0.35);
+  background:rgba(255,255,255,0.38);
   transform:translate(-50%,-50%);
-  transition:width 0.5s ease,height 0.5s ease,opacity 0.4s ease;
-  opacity:0;top:50%;left:50%;
+  transition:width 0.55s ease,height 0.55s ease,opacity 0.45s ease;
+  opacity:0;top:50%;left:50%;pointer-events:none;
 }
-.btn.ripple-active::after{width:300px;height:300px;opacity:0;}
-.btn::before{
-  content:'';position:absolute;inset:0;
-  background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,0.18) 50%,transparent 60%);
-  transform:translateX(-100%);
-  transition:transform 0.6s ease;
-}
-.btn:hover::before{transform:translateX(100%);}
+.btn.ripple-active::after{width:340px;height:340px;opacity:0;}
 .btn:active{transform:scale(0.96);}
-
-.btn-primary{
-  background:linear-gradient(135deg,var(--c-forest),var(--c-forest-l));
-  color:var(--c-white);
-  box-shadow:0 2px 12px rgba(26,74,46,0.25);
-}
-.btn-primary:hover{box-shadow:0 6px 24px rgba(26,74,46,0.35);transform:translateY(-2px);}
-.btn-primary:active{transform:scale(0.96) translateY(0);}
-
-.btn-gold{
-  background:linear-gradient(135deg,var(--c-gold),var(--c-gold-d));
-  color:var(--c-white);
-  box-shadow:var(--sh-gold);
-}
-.btn-gold:hover{box-shadow:0 8px 28px rgba(201,168,76,0.45);transform:translateY(-2px);}
-
-.btn-ghost{
-  background:transparent;color:var(--c-forest);
-  border:1.5px solid var(--c-border);
-}
-.btn-ghost:hover{border-color:var(--c-forest);background:var(--c-mint);}
-
-.btn-outline{
-  background:rgba(255,255,255,0.12);color:var(--c-white);
-  border:1.5px solid rgba(255,255,255,0.35);
-  backdrop-filter:blur(8px);
-}
-.btn-outline:hover{background:rgba(255,255,255,0.22);border-color:rgba(255,255,255,0.6);}
 
 .btn-sm{padding:8px 18px;font-size:0.83rem;border-radius:var(--r-sm);}
 .btn-lg{padding:15px 36px;font-size:1rem;border-radius:var(--r-lg);}
 .btn-disabled{background:var(--c-border);color:var(--c-text-3);cursor:not-allowed;pointer-events:none;}
 .btn-added{background:var(--c-success)!important;box-shadow:0 4px 16px rgba(34,197,94,0.4)!important;}
+
 
 /* ══════════════════════════════════════════
    FORMS
@@ -1121,24 +1093,57 @@ body::before{
 .back-btn:active{transform:scale(0.96);}
 
 /* ══════════════════════════════════════════
-   ANIMATIONS
+   ANIMATIONS & TRANSITIONS — Premium
 ══════════════════════════════════════════ */
-@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
-@keyframes fadeInUp{from{opacity:0;transform:translateY(22px);}to{opacity:1;transform:translateY(0);}}
-@keyframes fadeInDown{from{opacity:0;transform:translateY(-18px);}to{opacity:1;transform:translateY(0);}}
-@keyframes slideInRight{from{opacity:0;transform:translateX(28px);}to{opacity:1;transform:translateX(0);}}
-@keyframes scaleIn{from{opacity:0;transform:scale(0.94);}to{opacity:1;transform:scale(1);}}
-@keyframes bounceIn{0%{transform:scale(0.7);opacity:0;}60%{transform:scale(1.08);opacity:1;}100%{transform:scale(1);}}
-@keyframes cardIn{from{opacity:0;transform:translateY(18px);}to{opacity:1;transform:translateY(0);}}
+@keyframes fadeIn        {from{opacity:0}to{opacity:1}}
+@keyframes fadeInUp      {from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeInDown    {from{opacity:0;transform:translateY(-18px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideInRight  {from{opacity:0;transform:translateX(28px)}to{opacity:1;transform:translateX(0)}}
+@keyframes scaleIn       {from{opacity:0;transform:scale(0.93)}to{opacity:1;transform:scale(1)}}
+@keyframes bounceIn      {0%{transform:scale(0.7);opacity:0}60%{transform:scale(1.08);opacity:1}100%{transform:scale(1)}}
+@keyframes cardIn        {from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
 
-.reveal{opacity:0;transform:translateY(26px);transition:opacity 0.65s ease,transform 0.65s ease;will-change:opacity,transform;}
+/* Page enter animation */
+@keyframes pageSlideIn   {from{opacity:0;transform:translateY(18px) scale(0.993)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes pageSlideOut  {from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-10px)}}
+
+/* Shimmer sweep — reusable */
+@keyframes shimmer{
+  0%  {background-position:200% center}
+  100%{background-position:-200% center}
+}
+/* Glow pulse for CTA buttons */
+@keyframes glowPulse{
+  0%,100%{box-shadow:0 0 0 0 rgba(201,168,76,0)}
+  50%    {box-shadow:0 0 22px 6px rgba(201,168,76,0.32)}
+}
+/* Glow pulse for primary buttons */
+@keyframes glowPulseGreen{
+  0%,100%{box-shadow:0 2px 12px rgba(26,74,46,0.22)}
+  50%    {box-shadow:0 4px 28px rgba(26,74,46,0.42)}
+}
+/* Floating sparkle */
+@keyframes sparkleFloat{
+  0%  {opacity:0;transform:translateY(0) scale(0.5)}
+  40% {opacity:1}
+  100%{opacity:0;transform:translateY(-28px) scale(1.2)}
+}
+/* Soft tap ring for touch */
+@keyframes tapRing{
+  0%  {transform:translate(-50%,-50%) scale(0);opacity:0.7}
+  80% {transform:translate(-50%,-50%) scale(2.4);opacity:0.15}
+  100%{transform:translate(-50%,-50%) scale(2.6);opacity:0}
+}
+
+/* ── Reveal on scroll ── */
+.reveal{opacity:0;transform:translateY(28px);transition:opacity 0.68s cubic-bezier(0.22,1,0.36,1),transform 0.68s cubic-bezier(0.22,1,0.36,1);will-change:opacity,transform;}
 .reveal.revealed{opacity:1;transform:translateY(0);}
 .reveal-delay-1{transition-delay:0.1s;}
 .reveal-delay-2{transition-delay:0.2s;}
 .reveal-delay-3{transition-delay:0.3s;}
 .reveal-delay-4{transition-delay:0.4s;}
 
-.hero .container>div{animation:fadeInUp 0.8s 0.1s both;}
+.hero .container>div{animation:fadeInUp 0.85s 0.1s both;}
 
 .products-grid .product-card:nth-child(1){animation-delay:0.04s;}
 .products-grid .product-card:nth-child(2){animation-delay:0.09s;}
@@ -1149,9 +1154,139 @@ body::before{
 .products-grid .product-card:nth-child(7){animation-delay:0.34s;}
 .products-grid .product-card:nth-child(8){animation-delay:0.39s;}
 
-/* SPA PAGES */
-.page{display:none;}
-.page.active{display:block;animation:fadeIn 0.28s ease;}
+/* ── SPA page transitions ── */
+.page{display:none;will-change:opacity,transform;}
+.page.active{display:block;animation:pageSlideIn 0.42s cubic-bezier(0.22,1,0.36,1) both;}
+.page.leaving{animation:pageSlideOut 0.22s ease forwards;}
+
+/* ══════════════════════════════════════════
+   BUTTON GLOW & SHIMMER SYSTEM
+══════════════════════════════════════════ */
+
+/* --- Primary green button --- */
+.btn-primary{
+  background:linear-gradient(135deg,var(--c-forest),var(--c-forest-l));
+  color:var(--c-white);
+  box-shadow:0 2px 14px rgba(26,74,46,0.28);
+  transition:transform var(--t-fast),box-shadow var(--t-fast),filter var(--t-fast);
+}
+.btn-primary::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,0.22) 50%,transparent 70%);
+  background-size:200% 100%;
+  transform:translateX(-100%);
+  transition:transform 0.55s ease;
+  border-radius:inherit;
+}
+.btn-primary:hover{
+  box-shadow:0 6px 28px rgba(26,74,46,0.42),0 0 0 3px rgba(45,107,68,0.18);
+  transform:translateY(-2px);
+  filter:brightness(1.06);
+}
+.btn-primary:hover::before{transform:translateX(100%);}
+.btn-primary:active{transform:scale(0.96) translateY(0);filter:brightness(0.97);}
+
+/* --- Gold CTA button --- */
+.btn-gold{
+  background:linear-gradient(135deg,var(--c-gold-l),var(--c-gold),var(--c-gold-d));
+  background-size:200% 100%;
+  color:var(--c-white);
+  box-shadow:var(--sh-gold);
+  animation:glowPulse 3s ease-in-out infinite;
+  transition:transform var(--t-fast),box-shadow var(--t-fast),filter var(--t-fast);
+}
+.btn-gold::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(110deg,transparent 25%,rgba(255,255,255,0.28) 50%,transparent 75%);
+  background-size:200% 100%;
+  transform:translateX(-100%);
+  transition:transform 0.5s ease;
+  border-radius:inherit;
+}
+.btn-gold:hover{
+  box-shadow:0 8px 32px rgba(201,168,76,0.55),0 0 0 3px rgba(201,168,76,0.2);
+  transform:translateY(-3px);
+  animation:none;
+  filter:brightness(1.08);
+}
+.btn-gold:hover::before{transform:translateX(100%);}
+.btn-gold:active{transform:scale(0.95) translateY(0);}
+
+/* --- Ghost button --- */
+.btn-ghost{
+  background:transparent;color:var(--c-forest);
+  border:1.5px solid var(--c-border);
+  transition:border-color var(--t-base),background var(--t-base),box-shadow var(--t-base),transform var(--t-fast);
+}
+.btn-ghost::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(110deg,transparent 35%,rgba(26,74,46,0.06) 50%,transparent 65%);
+  transform:translateX(-100%);
+  transition:transform 0.5s ease;
+  border-radius:inherit;
+}
+.btn-ghost:hover{border-color:var(--c-forest);background:var(--c-mint);box-shadow:var(--sh-sm);transform:translateY(-1px);}
+.btn-ghost:hover::before{transform:translateX(100%);}
+
+/* --- Outline (hero) button --- */
+.btn-outline{
+  background:rgba(255,255,255,0.1);color:var(--c-white);
+  border:1.5px solid rgba(255,255,255,0.35);
+  backdrop-filter:blur(8px);
+  transition:background var(--t-base),border-color var(--t-base),box-shadow var(--t-base),transform var(--t-fast);
+}
+.btn-outline::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,0.15) 50%,transparent 70%);
+  transform:translateX(-100%);
+  transition:transform 0.5s ease;
+  border-radius:inherit;
+}
+.btn-outline:hover{background:rgba(255,255,255,0.2);border-color:rgba(255,255,255,0.65);box-shadow:0 4px 20px rgba(0,0,0,0.15);transform:translateY(-2px);}
+.btn-outline:hover::before{transform:translateX(100%);}
+
+/* --- Touch / tap ripple ring (mobile-friendly) --- */
+.btn-tap-ring{
+  position:absolute;width:10px;height:10px;
+  border-radius:50%;pointer-events:none;
+  border:2px solid rgba(255,255,255,0.55);
+  animation:tapRing 0.55s ease-out forwards;
+}
+
+/* --- Cart & icon buttons glow on hover --- */
+.nav-cart-btn{
+  transition:background var(--t-fast),transform var(--t-spring),box-shadow var(--t-fast);
+}
+.nav-cart-btn:hover{
+  background:var(--c-cream-d);
+  transform:scale(1.10);
+  box-shadow:0 4px 18px rgba(26,74,46,0.18);
+}
+
+/* --- btn-add-card product glow --- */
+.btn-add-card{
+  transition:transform var(--t-spring),box-shadow var(--t-fast),background var(--t-fast),filter var(--t-fast);
+  position:relative;overflow:hidden;
+}
+.btn-add-card::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,0.25) 50%,transparent 70%);
+  transform:translateX(-100%);
+  transition:transform 0.4s ease;
+  border-radius:inherit;
+}
+.btn-add-card:hover{transform:scale(1.12);box-shadow:0 4px 18px rgba(26,74,46,0.38);filter:brightness(1.08);}
+.btn-add-card:hover::before{transform:translateX(100%);}
+.btn-add-card:active{transform:scale(0.93);}
+
+/* --- Nav links glow underline ── */
+.nav-links a{position:relative;overflow:hidden;}
+.nav-links a::before{
+  content:'';position:absolute;inset:0;border-radius:var(--r-sm);
+  background:radial-gradient(ellipse at center,rgba(26,74,46,0.07) 0%,transparent 70%);
+  opacity:0;transition:opacity var(--t-fast);
+}
+.nav-links a:hover::before{opacity:1;}
 
 /* ══════════════════════════════════════════
    RESPONSIVE
@@ -1924,12 +2059,25 @@ const UI = (() => {
   };
   const debounce = (fn, d=300) => { let t; return (...a) => { clearTimeout(t); t=setTimeout(() => fn(...a), d); }; };
   const addRipple = btn => {
-    btn.addEventListener('click', () => {
+    if(btn._rippleAttached) return;
+    btn._rippleAttached = true;
+    const trigger = (e) => {
       btn.classList.remove('ripple-active');
       void btn.offsetWidth;
       btn.classList.add('ripple-active');
-      setTimeout(() => btn.classList.remove('ripple-active'), 600);
-    });
+      // Tap ring at touch/click point (mobile magic)
+      const rect = btn.getBoundingClientRect();
+      const clientX = e.clientX ?? (e.touches?.[0]?.clientX ?? rect.left + rect.width/2);
+      const clientY = e.clientY ?? (e.touches?.[0]?.clientY ?? rect.top + rect.height/2);
+      const ring = document.createElement('span');
+      ring.className = 'btn-tap-ring';
+      ring.style.left = (clientX - rect.left) + 'px';
+      ring.style.top  = (clientY - rect.top)  + 'px';
+      btn.appendChild(ring);
+      setTimeout(() => { ring.remove(); btn.classList.remove('ripple-active'); }, 580);
+    };
+    btn.addEventListener('click', trigger);
+    btn.addEventListener('touchstart', trigger, {passive:true});
   };
   const initRipples = () => document.querySelectorAll('.btn').forEach(addRipple);
   return { init, showToast, empty, starRating, fmtDate, statusBadge, debounce, initRipples };
@@ -2117,12 +2265,28 @@ document.getElementById('settings-drawer').addEventListener('touchmove', e => {
 let _currentPage = 'home';
 
 function navigate(page, data={}) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  const el = document.getElementById('page-'+page);
-  if(!el) { console.warn('Page not found:', page); return; }
-  el.classList.add('active');
+  // Smooth page transition
+  const current = document.querySelector('.page.active');
+  const next = document.getElementById('page-'+page);
+  if(!next) { console.warn('Page not found:', page); return; }
+  if(current && current !== next) {
+    current.classList.add('leaving');
+    setTimeout(() => {
+      current.classList.remove('active','leaving');
+      next.classList.add('active');
+      window.scrollTo({ top:0, behavior:'instant' });
+      _finishNavigate(page, data);
+    }, 180);
+  } else {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active','leaving'));
+    next.classList.add('active');
+    window.scrollTo({ top:0, behavior:'instant' });
+    _finishNavigate(page, data);
+  }
+}
+
+function _finishNavigate(page, data={}) {
   _currentPage = page;
-  window.scrollTo({ top:0, behavior:'instant' });
   document.querySelectorAll('.nav-links a').forEach(a => a.classList.remove('active'));
   const navEl = document.getElementById('nav-'+page);
   if(navEl) navEl.classList.add('active');
