@@ -424,105 +424,270 @@ body::before{
 .feature-item{
   display:flex;align-items:center;gap:16px;
   padding:16px 20px;border-radius:var(--r-md);
-  transition:background var(--t-fast),transform var(--t-spring),box-shadow var(--t-fast);
-  cursor:default;
+  transition:background 0.28s ease,transform 0.35s cubic-bezier(0.22,1,0.36,1),box-shadow 0.28s ease;
+  cursor:default;position:relative;overflow:hidden;
 }
-.feature-item:hover{background:var(--c-mint);transform:translateY(-3px);box-shadow:var(--sh-sm);}
+.feature-item::before{
+  content:'';position:absolute;inset:0;border-radius:var(--r-md);
+  background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,0.55) 50%,transparent 70%);
+  transform:translateX(-100%);transition:transform 0.5s ease;pointer-events:none;
+}
+.feature-item:hover{background:var(--c-mint);transform:translateY(-4px);box-shadow:var(--sh-md);}
+.feature-item:hover::before{transform:translateX(100%);}
 .feature-icon-wrap{
-  width:46px;height:46px;border-radius:var(--r-md);
+  width:48px;height:48px;border-radius:var(--r-md);
   background:linear-gradient(135deg,var(--c-mint),var(--c-cream-d));
   display:flex;align-items:center;justify-content:center;
-  font-size:1.4rem;flex-shrink:0;
-  transition:transform var(--t-spring);
+  font-size:1.45rem;flex-shrink:0;
+  transition:transform 0.35s cubic-bezier(0.34,1.56,0.64,1),box-shadow 0.28s ease;
+  box-shadow:var(--sh-xs);
 }
-.feature-item:hover .feature-icon-wrap{transform:scale(1.1) rotate(-5deg);}
-.feature-text strong{display:block;font-size:0.9rem;font-weight:600;color:var(--c-text);margin-bottom:2px;}
+.feature-item:hover .feature-icon-wrap{
+  transform:scale(1.15) rotate(-8deg);
+  box-shadow:0 6px 20px rgba(26,74,46,0.18);
+}
+.feature-text strong{display:block;font-size:0.9rem;font-weight:600;color:var(--c-text);margin-bottom:2px;transition:color 0.2s ease;}
+.feature-item:hover .feature-text strong{color:var(--c-forest);}
 .feature-text span{font-size:0.78rem;color:var(--c-text-3);}
 
 /* ══════════════════════════════════════════
-   PRODUCT CARDS
+   PRODUCT CARDS — Premium Interactive
 ══════════════════════════════════════════ */
+@keyframes cardIn{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:translateY(0)}}
+@keyframes cardGlowPulse{
+  0%,100%{box-shadow:0 4px 24px rgba(26,74,46,0.10),0 0 0 0 rgba(26,74,46,0)}
+  50%    {box-shadow:0 12px 40px rgba(26,74,46,0.18),0 0 28px 4px rgba(45,107,68,0.08)}
+}
+@keyframes badgeSpin{
+  0%  {transform:rotate(-8deg) scale(1)}
+  50% {transform:rotate(4deg)  scale(1.08)}
+  100%{transform:rotate(-8deg) scale(1)}
+}
+@keyframes imgShimmer{
+  0%  {background-position:200% 50%}
+  100%{background-position:-200% 50%}
+}
+@keyframes overlayTextIn{
+  from{opacity:0;transform:translateY(10px) scale(0.96)}
+  to  {opacity:1;transform:translateY(0)   scale(1)}
+}
+@keyframes glowRingPop{
+  0%  {opacity:0.7;transform:translate(-50%,-50%) scale(0.3)}
+  70% {opacity:0.25}
+  100%{opacity:0;transform:translate(-50%,-50%) scale(2.8)}
+}
+
 .products-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(268px,1fr));gap:26px;}
+
 .product-card{
   background:var(--c-white);
   border-radius:var(--r-lg);
   border:1px solid var(--c-border-l);
-  overflow:hidden;cursor:pointer;
-  transition:transform var(--t-base),box-shadow var(--t-base),border-color var(--t-base);
-  will-change:transform;
-  animation:cardIn 0.45s ease both;
+  overflow:visible; /* allow glow ring to bleed out */
+  cursor:pointer;
+  /* GPU layer */
+  transform-style:preserve-3d;
+  perspective:800px;
+  will-change:transform,box-shadow;
+  animation:cardIn 0.48s cubic-bezier(0.22,1,0.36,1) both;
+  transition:
+    box-shadow 0.35s cubic-bezier(0.22,1,0.36,1),
+    border-color 0.25s ease;
+  position:relative;
+  /* clip inner overflow separately via inner div */
 }
+/* inner clip so img & body respect border-radius */
+.product-card-inner{
+  border-radius:var(--r-lg);
+  overflow:hidden;
+  position:relative;
+  z-index:1;
+  background:var(--c-white);
+  transition:transform 0.35s cubic-bezier(0.22,1,0.36,1);
+}
+
+/* Ambient glow layer — appears on hover */
+.product-card::before{
+  content:'';
+  position:absolute;inset:-2px;
+  border-radius:calc(var(--r-lg) + 2px);
+  background:linear-gradient(135deg,
+    rgba(45,107,68,0.0) 0%,
+    rgba(122,173,138,0.0) 50%,
+    rgba(201,168,76,0.0) 100%);
+  opacity:0;
+  transition:opacity 0.4s ease;
+  z-index:0;
+  pointer-events:none;
+  filter:blur(8px);
+}
+.product-card:hover::before{
+  background:linear-gradient(135deg,
+    rgba(45,107,68,0.22) 0%,
+    rgba(122,173,138,0.12) 50%,
+    rgba(201,168,76,0.15) 100%);
+  opacity:1;
+}
+
+/* Light sweep overlay — mouse-follow shimmer */
+.product-card-shine{
+  position:absolute;inset:0;border-radius:var(--r-lg);
+  background:radial-gradient(circle at var(--mx,50%) var(--my,50%),
+    rgba(255,255,255,0.18) 0%,
+    transparent 55%);
+  opacity:0;transition:opacity 0.3s ease;
+  pointer-events:none;z-index:2;
+}
+.product-card:hover .product-card-shine{opacity:1;}
+
+/* Hover lift with 3D tilt (set via JS) */
 .product-card:hover{
-  transform:translateY(-6px) scale(1.01);
-  box-shadow:var(--sh-lg);
+  box-shadow:
+    0 20px 60px rgba(26,74,46,0.18),
+    0 6px 20px rgba(26,74,46,0.12),
+    0 0 0 1.5px rgba(45,107,68,0.18);
   border-color:transparent;
 }
-.product-card:active{transform:translateY(-2px) scale(0.99);}
+
+/* Image section */
 .product-card-img-wrap{
   position:relative;aspect-ratio:4/3;overflow:hidden;
   background:linear-gradient(135deg,var(--c-mint),var(--c-cream-d));
 }
 .product-card-img{
   width:100%;height:100%;object-fit:cover;
-  transition:transform var(--t-slow);
+  transition:transform 0.55s cubic-bezier(0.22,1,0.36,1),filter 0.4s ease;
   will-change:transform;
 }
-.product-card:hover .product-card-img{transform:scale(1.07);}
+.product-card:hover .product-card-img{
+  transform:scale(1.09);
+  filter:brightness(1.04) saturate(1.1);
+}
+
+/* Gradient overlay that appears on hover */
 .product-card-overlay{
   position:absolute;inset:0;
-  background:linear-gradient(to top,rgba(26,74,46,0.55) 0%,transparent 55%);
-  opacity:0;transition:opacity var(--t-base);
-  display:flex;align-items:flex-end;padding:16px;
+  background:linear-gradient(
+    to top,
+    rgba(15,45,28,0.72) 0%,
+    rgba(26,74,46,0.28) 45%,
+    transparent 70%);
+  opacity:0;
+  transition:opacity 0.38s ease;
+  display:flex;align-items:flex-end;padding:18px;
+  z-index:2;
 }
 .product-card:hover .product-card-overlay{opacity:1;}
+
 .product-overlay-action{
-  color:var(--c-white);font-size:0.8rem;font-weight:600;
+  color:var(--c-white);font-size:0.82rem;font-weight:600;
   display:flex;align-items:center;gap:6px;
-  transform:translateY(8px);
-  transition:transform var(--t-base);
+  transform:translateY(12px);opacity:0;
+  transition:transform 0.35s cubic-bezier(0.22,1,0.36,1),opacity 0.3s ease;
 }
-.product-card:hover .product-overlay-action{transform:translateY(0);}
+.product-card:hover .product-overlay-action{
+  transform:translateY(0);opacity:1;
+  animation:overlayTextIn 0.38s cubic-bezier(0.22,1,0.36,1) both;
+}
+
+/* Badge with subtle bounce */
 .product-badge{
   position:absolute;top:12px;right:12px;
-  background:linear-gradient(135deg,var(--c-gold),var(--c-gold-d));
+  background:linear-gradient(135deg,var(--c-gold-l),var(--c-gold-d));
   color:var(--c-white);font-size:0.7rem;font-weight:700;
-  padding:4px 11px;border-radius:var(--r-full);letter-spacing:0.05em;
+  padding:4px 12px;border-radius:var(--r-full);letter-spacing:0.05em;
   box-shadow:var(--sh-gold);
+  z-index:3;
+  animation:badgeSpin 4s ease-in-out infinite;
+  transform-origin:center center;
 }
+
 .out-of-stock-overlay{
   position:absolute;inset:0;
-  background:rgba(255,255,255,0.75);
+  background:rgba(255,255,255,0.76);
   display:flex;align-items:center;justify-content:center;
   font-weight:700;color:var(--c-text-3);font-size:0.88rem;
   letter-spacing:0.06em;text-transform:uppercase;
-  backdrop-filter:blur(3px);
+  backdrop-filter:blur(3px);z-index:4;
 }
-.product-card-body{padding:20px;}
+
+/* Card body */
+.product-card-body{padding:20px;position:relative;}
+
+/* Subtle gold accent line that slides in on hover */
+.product-card-body::before{
+  content:'';
+  position:absolute;bottom:0;right:20px;left:20px;height:2px;
+  background:linear-gradient(90deg,transparent,var(--c-gold),transparent);
+  transform:scaleX(0);transform-origin:center;
+  transition:transform 0.45s cubic-bezier(0.22,1,0.36,1);
+  border-radius:2px;
+}
+.product-card:hover .product-card-body::before{transform:scaleX(1);}
+
 .product-card-cat{
   font-size:0.7rem;font-weight:700;color:var(--c-sage);
   text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;
+  transition:color 0.25s ease;
 }
+.product-card:hover .product-card-cat{color:var(--c-forest);}
+
 .product-card-name{
   font-size:1.05rem;font-weight:700;color:var(--c-text);
   margin-bottom:12px;line-height:1.35;
+  transition:color 0.25s ease;
 }
+.product-card:hover .product-card-name{color:var(--c-forest-d);}
+
 .product-card-meta{display:flex;align-items:center;gap:8px;margin-bottom:16px;}
 .product-card-reviews{font-size:0.78rem;color:var(--c-text-3);}
 .product-card-footer{display:flex;align-items:center;justify-content:space-between;}
 .product-card-price-wrap{display:flex;align-items:baseline;gap:8px;}
-.product-card-price{font-size:1.2rem;font-weight:700;color:var(--c-forest);font-family:var(--f-latin);}
+.product-card-price{
+  font-size:1.2rem;font-weight:700;color:var(--c-forest);font-family:var(--f-latin);
+  transition:color 0.25s ease;
+}
+.product-card:hover .product-card-price{color:var(--c-forest-d);}
 .product-card-original{font-size:0.83rem;color:var(--c-text-4);text-decoration:line-through;font-family:var(--f-latin);}
+
+/* Add-to-cart button — premium glow */
 .btn-add-card{
   width:38px;height:38px;
   background:linear-gradient(135deg,var(--c-forest),var(--c-forest-l));
   color:var(--c-white);border-radius:var(--r-sm);
   font-size:1.4rem;display:flex;align-items:center;justify-content:center;
-  transition:transform var(--t-spring),box-shadow var(--t-fast),background var(--t-fast);
-  flex-shrink:0;
+  transition:
+    transform 0.3s cubic-bezier(0.34,1.56,0.64,1),
+    box-shadow 0.28s ease,
+    background 0.25s ease,
+    filter 0.25s ease;
+  flex-shrink:0;position:relative;overflow:hidden;
 }
-.btn-add-card:hover{transform:scale(1.15) rotate(5deg);box-shadow:0 4px 16px rgba(26,74,46,0.35);}
-.btn-add-card:active{transform:scale(0.95);}
+.btn-add-card::after{
+  content:'';position:absolute;inset:0;border-radius:inherit;
+  background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,0.28) 50%,transparent 70%);
+  transform:translateX(-100%);
+  transition:transform 0.4s ease;pointer-events:none;
+}
+.btn-add-card:hover{
+  transform:scale(1.18) rotate(8deg);
+  box-shadow:0 6px 22px rgba(26,74,46,0.45);
+  filter:brightness(1.1);
+}
+.btn-add-card:hover::after{transform:translateX(100%);}
+.btn-add-card:active{transform:scale(0.92) rotate(0deg);}
 .out-badge{font-size:0.73rem;color:var(--c-text-3);font-weight:600;}
+
+/* Touch glow ring that pops on tap */
+.card-touch-ring{
+  position:absolute;border-radius:50%;pointer-events:none;
+  width:60px;height:60px;
+  background:radial-gradient(circle,rgba(45,107,68,0.35) 0%,transparent 70%);
+  border:1.5px solid rgba(45,107,68,0.3);
+  animation:glowRingPop 0.65s ease-out forwards;
+  z-index:10;transform:translate(-50%,-50%);
+  will-change:transform,opacity;
+}
 
 .stars{display:flex;gap:2px;}
 .star{font-size:0.82rem;color:var(--c-border);}
@@ -2665,26 +2830,29 @@ function _productCard(p) {
   const disc = p.originalPrice > p.price ? Math.round((1-p.price/p.originalPrice)*100) : 0;
   return `
     <div class="product-card" data-id="${p.id}" role="article">
-      <div class="product-card-img-wrap">
-        <img data-src="${p.thumb}" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 200'%3E%3Crect fill='%23e8f5ec' width='300' height='200'/%3E%3C/svg%3E" alt="${p.name}" class="product-card-img" loading="lazy">
-        ${p.badge ? `<span class="product-badge">${p.badge}</span>` : ''}
-        ${!p.inStock ? `<div class="out-of-stock-overlay">غير متوفر</div>` : ''}
-        <div class="product-card-overlay">
-          <div class="product-overlay-action">← عرض التفاصيل</div>
-        </div>
-      </div>
-      <div class="product-card-body">
-        <div class="product-card-cat">${ProductsService.getCategoryLabel(p.category)}</div>
-        <h3 class="product-card-name">${p.name}</h3>
-        <div class="product-card-meta">${UI.starRating(p.rating)}<span class="product-card-reviews">${p.reviews} تقييم</span></div>
-        <div class="product-card-footer">
-          <div class="product-card-price-wrap">
-            <span class="product-card-price">${Currency.fmt(p.price)}</span>
-            ${disc ? `<span class="product-card-original">${Currency.fmt(p.originalPrice)}</span>` : ''}
+      <div class="product-card-shine"></div>
+      <div class="product-card-inner">
+        <div class="product-card-img-wrap">
+          <img data-src="${p.thumb}" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 200'%3E%3Crect fill='%23e8f5ec' width='300' height='200'/%3E%3C/svg%3E" alt="${p.name}" class="product-card-img" loading="lazy">
+          ${p.badge ? `<span class="product-badge">${p.badge}</span>` : ''}
+          ${!p.inStock ? `<div class="out-of-stock-overlay">غير متوفر</div>` : ''}
+          <div class="product-card-overlay">
+            <div class="product-overlay-action">← عرض التفاصيل</div>
           </div>
-          ${p.inStock
-            ? `<button class="btn-add-card" data-action="add-cart" data-id="${p.id}" aria-label="إضافة ${p.name} للعربة">+</button>`
-            : `<span class="out-badge">غير متوفر</span>`}
+        </div>
+        <div class="product-card-body">
+          <div class="product-card-cat">${ProductsService.getCategoryLabel(p.category)}</div>
+          <h3 class="product-card-name">${p.name}</h3>
+          <div class="product-card-meta">${UI.starRating(p.rating)}<span class="product-card-reviews">${p.reviews} تقييم</span></div>
+          <div class="product-card-footer">
+            <div class="product-card-price-wrap">
+              <span class="product-card-price">${Currency.fmt(p.price)}</span>
+              ${disc ? `<span class="product-card-original">${Currency.fmt(p.originalPrice)}</span>` : ''}
+            </div>
+            ${p.inStock
+              ? `<button class="btn-add-card" data-action="add-cart" data-id="${p.id}" aria-label="إضافة ${p.name} للعربة">+</button>`
+              : `<span class="out-badge">غير متوفر</span>`}
+          </div>
         </div>
       </div>
     </div>`;
@@ -2811,6 +2979,90 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('keydown', e => { if(e.key === 'Escape') closeDrawer(); });
 
   UI.initRipples();
+
+  /* ─────────────────────────────────────────
+     PREMIUM CARD INTERACTION ENGINE
+     - 3D tilt on mousemove
+     - Mouse-follow radial shine
+     - Touch glow ring on tap
+     - Feature items glow
+  ───────────────────────────────────────── */
+  const isMobile = () => window.matchMedia('(hover:none)').matches;
+
+  function initCardEffects() {
+    document.querySelectorAll('.product-card:not([data-fx])').forEach(card => {
+      card.setAttribute('data-fx','1');
+      const shine = card.querySelector('.product-card-shine');
+
+      /* ── Mouse-follow 3D tilt + shine (desktop) ── */
+      card.addEventListener('mousemove', e => {
+        if(isMobile()) return;
+        const r   = card.getBoundingClientRect();
+        const x   = e.clientX - r.left;
+        const y   = e.clientY - r.top;
+        const cx  = r.width  / 2;
+        const cy  = r.height / 2;
+        const tiltX = ((y - cy) / cy) * 7;   // max ±7deg vertical
+        const tiltY = ((cx - x) / cx) * 7;   // max ±7deg horizontal
+        const inner = card.querySelector('.product-card-inner');
+        if(inner) {
+          inner.style.transform =
+            `perspective(700px) rotateX(${tiltX}deg) rotateY(${tiltY}deg) translateZ(6px)`;
+        }
+        // Update shine position CSS var
+        if(shine) {
+          shine.style.setProperty('--mx', (x / r.width  * 100) + '%');
+          shine.style.setProperty('--my', (y / r.height * 100) + '%');
+        }
+      });
+
+      card.addEventListener('mouseleave', () => {
+        if(isMobile()) return;
+        const inner = card.querySelector('.product-card-inner');
+        if(inner) {
+          inner.style.transition = 'transform 0.55s cubic-bezier(0.22,1,0.36,1)';
+          inner.style.transform  = 'perspective(700px) rotateX(0deg) rotateY(0deg) translateZ(0px)';
+        }
+      });
+
+      card.addEventListener('mouseenter', () => {
+        if(isMobile()) return;
+        const inner = card.querySelector('.product-card-inner');
+        if(inner) inner.style.transition = 'transform 0.18s ease';
+      });
+
+      /* ── Touch glow ring (mobile) ── */
+      card.addEventListener('touchstart', e => {
+        const touch = e.touches[0];
+        const rect  = card.getBoundingClientRect();
+        const ring  = document.createElement('div');
+        ring.className = 'card-touch-ring';
+        ring.style.left = (touch.clientX - rect.left)  + 'px';
+        ring.style.top  = (touch.clientY - rect.top)   + 'px';
+        card.appendChild(ring);
+        setTimeout(() => ring.remove(), 700);
+      }, {passive:true});
+    });
+
+    /* ── Feature item icon bounce on hover ── */
+    document.querySelectorAll('.feature-item:not([data-fx])').forEach(item => {
+      item.setAttribute('data-fx','1');
+      item.addEventListener('mouseenter', () => {
+        const icon = item.querySelector('.feature-icon-wrap');
+        if(!icon) return;
+        icon.style.animation = 'none';
+        void icon.offsetWidth;
+        icon.style.animation = 'bounceIn 0.45s cubic-bezier(0.34,1.56,0.64,1)';
+      });
+    });
+  }
+
+  /* Re-run whenever new cards are rendered */
+  const _origInitHome = window.initHome;
+  const _cardFxObserver = new MutationObserver(() => initCardEffects());
+  _cardFxObserver.observe(document.body, { childList:true, subtree:true });
+  initCardEffects();
+
   navigate('home');
 });
 </script>
