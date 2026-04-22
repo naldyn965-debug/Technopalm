@@ -1465,61 +1465,110 @@ body::before{
   .cart-layout{grid-template-columns:1fr 320px;}
   .features-grid{grid-template-columns:repeat(2,1fr);}
 }
+
 @media(max-width:768px){
   :root{--nav-h:60px;}
-  .container{padding:0 18px;}
-  .section{padding:60px 0;}
-  .menu-toggle{display:flex;}
+  .container{padding:0 16px;}
+  .section{padding:52px 0;}
+
+  /* ── Navbar mobile ── */
+  .nav-inner{padding:0 16px;gap:8px;}
+  .nav-right{gap:6px;}
+  .nav-wordmark-sub{display:none;}          /* hide tagline on mobile */
+  .nav-wordmark-main{font-size:1.05rem;}
+  .nav-logo-mark{width:34px;height:34px;border-radius:9px;}
+  .nav-logo-mark svg{width:20px;height:20px;}
   .nav-divider{display:none;}
-  /* On mobile: nav-links become dropdown below navbar */
+  .nav-cart-btn{width:36px;height:36px;font-size:1rem;}
+  .btn.btn-ghost.btn-sm{font-size:0.78rem;padding:6px 10px;}
+
+  /* ── Nav links dropdown ── */
+  .menu-toggle{display:flex;}
   .nav-links{
     display:none;
     position:absolute;top:var(--nav-h);right:0;left:0;
     background:var(--c-white);flex-direction:column;
-    padding:14px;border-bottom:1px solid var(--c-border);
-    box-shadow:var(--sh-lg);z-index:199;gap:4px;
+    padding:12px;border-bottom:1px solid var(--c-border);
+    box-shadow:var(--sh-lg);z-index:199;gap:2px;
     direction:rtl;
   }
-  .nav-links.open{display:flex;animation:fadeInDown 0.25s ease;}
-  .nav-links a{padding:12px 16px;border-radius:var(--r-md);font-size:0.97rem;}
+  .nav-links.open{display:flex;animation:fadeInDown 0.22s ease;}
+  .nav-links a{padding:11px 16px;border-radius:var(--r-md);font-size:0.95rem;}
   .nav-links a::after{display:none;}
   .nav-links a:hover,.nav-links a.active{background:var(--c-mint);}
-  /* hide desktop login text on mobile, show only icon/avatar */
-  .btn.btn-ghost.btn-sm{font-size:0.8rem;padding:7px 13px;}
-  .hero{padding:80px 0 64px;min-height:auto;}
+
+  /* ── Hero ── */
+  .hero{padding:72px 0 56px;min-height:auto;}
   .hero-visual{display:none;}
-  .hero-stats{gap:32px;flex-wrap:wrap;}
-  .hero-actions{flex-direction:column;}
+  .hero-stats{gap:24px;flex-wrap:wrap;}
+  .hero-stat-num{font-size:1.8rem;}
+  .hero-actions{flex-direction:column;gap:10px;}
   .hero-actions .btn{width:100%;justify-content:center;}
+
+  /* ── Grids ── */
   .grid-2,.grid-3,.grid-4{grid-template-columns:1fr;}
-  .products-grid{grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:18px;}
-  .product-detail-grid{grid-template-columns:1fr;gap:28px;}
+  .products-grid{grid-template-columns:repeat(2,1fr);gap:14px;}
+
+  /* ── Product detail ── */
+  .product-detail-grid{grid-template-columns:1fr;gap:24px;}
   .product-actions-row{flex-direction:column;align-items:stretch;}
+
+  /* ── Cart & Checkout ── */
   .cart-layout{grid-template-columns:1fr;}
   .cart-summary-card{position:static;}
-  .cart-item{grid-template-columns:70px 1fr;}
+  .cart-item{grid-template-columns:64px 1fr;}
   .cart-item-price{grid-column:1/-1;justify-self:end;}
   .checkout-layout{grid-template-columns:1fr;}
   .step-indicator span:not(.step-num){display:none;}
   .form-row{grid-template-columns:1fr;}
+
+  /* ── Profile ── */
   .profile-layout{grid-template-columns:1fr;}
-  .profile-nav{display:flex;overflow-x:auto;padding:8px;gap:8px;}
-  .profile-tab{min-width:auto;white-space:nowrap;padding:9px 16px;}
-  .auth-card{padding:36px 26px;}
-  .filter-bar{flex-direction:column;align-items:stretch;gap:14px;}
-  .filter-right{flex-wrap:wrap;}
+  .profile-nav{display:flex;overflow-x:auto;padding:6px;gap:6px;}
+  .profile-tab{min-width:auto;white-space:nowrap;padding:8px 14px;}
+
+  /* ── Auth card ── */
+  .auth-card{padding:28px 20px;}
+  .auth-page{padding:20px 0;}
+
+  /* ── Filter & search ── */
+  .filter-bar{flex-direction:column;align-items:stretch;gap:12px;}
+  .filter-right{flex-wrap:wrap;gap:8px;}
   .search-input{width:100%;}
   .search-input:focus{width:100%;}
-  .footer-grid{grid-template-columns:1fr;gap:32px;}
-  .features-grid{grid-template-columns:1fr 1fr;gap:22px;}
-  #toast-container{left:16px;right:16px;bottom:16px;}
+
+  /* ── Features ── */
+  .features-grid{grid-template-columns:1fr 1fr;gap:12px;}
+  .feature-item{padding:12px 14px;gap:12px;}
+
+  /* ── Footer ── */
+  .footer-grid{grid-template-columns:1fr;gap:28px;}
+  .footer{padding:52px 0 28px;}
+
+  /* ── Toasts ── */
+  #toast-container{left:12px;right:12px;bottom:12px;}
   .toast{max-width:100%;min-width:0;}
+
+  /* ── Section headers ── */
+  .section-header-flex{flex-direction:column;align-items:flex-start;gap:14px;}
 }
+
 @media(max-width:480px){
   .products-grid{grid-template-columns:1fr;}
   .features-grid{grid-template-columns:1fr;}
   .checkout-btn-row{flex-direction:column-reverse;}
+  .hero-stats{gap:18px;}
+  .hero-stat-num{font-size:1.6rem;}
+  .nav-wordmark-main{font-size:0.95rem;}
+  .cart-item{grid-template-columns:56px 1fr;}
+  .footer-logo{font-size:1.1rem;}
 }
+
+@media(max-width:360px){
+  .nav-wordmark{display:none;}   /* very small screens: logo only */
+  .container{padding:0 12px;}
+}
+
 @media(prefers-reduced-motion:reduce){
   *{animation-duration:0.01ms!important;transition-duration:0.01ms!important;}
 }
@@ -3183,13 +3232,17 @@ window._fbAuth = {
   login: async ({ email, password }) => {
     try {
       const cred = await signInWithEmailAndPassword(_auth, email, password);
-      const user = _buildUser(cred.user);
-      try {
-        const snap = await getDoc(doc(_db, 'users', cred.user.uid));
-        if (snap.exists()) Object.assign(user, snap.data());
-      } catch(e) {}
       window.__fbUser = cred.user;
+      // Set user immediately from Firebase Auth (fast)
+      const user = _buildUser(cred.user);
       window.Store?.setState('user', user);
+      // Fetch Firestore profile in background (non-blocking)
+      getDoc(doc(_db, 'users', cred.user.uid)).then(snap => {
+        if (snap.exists()) {
+          const merged = { ...user, ...snap.data() };
+          window.Store?.setState('user', merged);
+        }
+      }).catch(() => {});
       return { ok: true };
     } catch(e) {
       const m = {
@@ -3206,12 +3259,15 @@ window._fbAuth = {
     try {
       const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1a4a2e&color=e2c97e&bold=true&size=128`;
       const cred = await createUserWithEmailAndPassword(_auth, email, password);
-      await fbUpdateProfile(cred.user, { displayName: name, photoURL: avatar });
-      await setDoc(doc(_db, 'users', cred.user.uid), { name, email, avatar, createdAt: new Date().toISOString() });
       window.__fbUser = cred.user;
-      const user = _buildUser(cred.user);
-      user.name = name; user.avatar = avatar;
+      // Set user immediately (fast)
+      const user = { ..._buildUser(cred.user), name, avatar };
       window.Store?.setState('user', user);
+      // Save to Firestore + update profile in background
+      Promise.all([
+        fbUpdateProfile(cred.user, { displayName: name, photoURL: avatar }),
+        setDoc(doc(_db, 'users', cred.user.uid), { name, email, avatar, createdAt: new Date().toISOString() })
+      ]).catch(() => {});
       return { ok: true };
     } catch(e) {
       const m = {
@@ -3226,14 +3282,15 @@ window._fbAuth = {
   googleLogin: async () => {
     try {
       const r = await signInWithPopup(_auth, _gp);
-      await setDoc(doc(_db, 'users', r.user.uid), {
-        name: r.user.displayName, email: r.user.email,
-        avatar: r.user.photoURL, provider: 'google',
-        updatedAt: new Date().toISOString()
-      }, { merge: true });
       window.__fbUser = r.user;
       const user = _buildUser(r.user);
       window.Store?.setState('user', user);
+      // Save to Firestore in background
+      setDoc(doc(_db, 'users', r.user.uid), {
+        name: r.user.displayName, email: r.user.email,
+        avatar: r.user.photoURL, provider: 'google',
+        updatedAt: new Date().toISOString()
+      }, { merge: true }).catch(() => {});
       return { ok: true };
     } catch(e) {
       if (e.code === 'auth/popup-closed-by-user') return { ok: false, error: '' };
@@ -3242,7 +3299,7 @@ window._fbAuth = {
   },
 
   logout: async () => {
-    await signOut(_auth);
+    await signOut(_auth).catch(() => {});
   },
 
   updateProfile: async ({ name }) => {
@@ -3251,10 +3308,13 @@ window._fbAuth = {
     if (!fbUser || !user) return { ok: false, error: 'غير مسجل الدخول.' };
     try {
       const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1a4a2e&color=e2c97e&bold=true&size=128`;
-      await fbUpdateProfile(fbUser, { displayName: name, photoURL: avatar });
-      await setDoc(doc(_db, 'users', fbUser.uid), { name, avatar }, { merge: true });
       const updated = { ...user, name, avatar };
       window.Store.setState('user', updated);
+      // Save in background
+      Promise.all([
+        fbUpdateProfile(fbUser, { displayName: name, photoURL: avatar }),
+        setDoc(doc(_db, 'users', fbUser.uid), { name, avatar }, { merge: true })
+      ]).catch(() => {});
       return { ok: true, user: updated };
     } catch(e) {
       return { ok: false, error: 'فشل تحديث البيانات.' };
