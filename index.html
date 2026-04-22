@@ -1030,16 +1030,25 @@ body::before{
 /* ══════════════════════════════════════════
    PROFILE PAGE
 ══════════════════════════════════════════ */
-.profile-layout{display:grid;grid-template-columns:300px 1fr;gap:32px;align-items:start;}
+.profile-layout{
+  display:grid;
+  grid-template-columns:280px 1fr;
+  gap:28px;
+  align-items:start;
+  width:100%;
+  min-width:0;
+}
 .profile-sidebar{
   background:var(--c-white);border:1px solid var(--c-border-l);
   border-radius:var(--r-lg);overflow:hidden;
   box-shadow:var(--sh-sm);
   animation:fadeInUp 0.4s ease both;
+  min-width:0;
+  position:sticky;top:calc(var(--nav-h) + 16px);
 }
 .profile-card-header{
   background:linear-gradient(145deg,var(--c-forest-d),var(--c-forest-l));
-  padding:40px 24px 30px;text-align:center;
+  padding:36px 20px 24px;text-align:center;
   position:relative;overflow:hidden;
 }
 .profile-card-header::before{
@@ -1048,23 +1057,24 @@ body::before{
   background:rgba(201,168,76,0.1);
   top:-60px;left:-40px;
 }
-.profile-avatar-wrap{position:relative;display:inline-block;margin-bottom:18px;}
-.profile-avatar{width:90px;height:90px;border-radius:50%;border:3px solid var(--c-gold);object-fit:cover;}
+.profile-avatar-wrap{position:relative;display:inline-block;margin-bottom:16px;}
+.profile-avatar{width:84px;height:84px;border-radius:50%;border:3px solid var(--c-gold);object-fit:cover;}
 .profile-avatar-ring{
   position:absolute;inset:-6px;border-radius:50%;
   border:2px solid rgba(201,168,76,0.35);
   animation:pulse 3s ease-in-out infinite;
 }
 @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.5;}}
-#profile-name{color:var(--c-white);font-size:1.25rem;margin-bottom:5px;}
-#profile-email{color:rgba(255,255,255,0.65);font-size:0.83rem;}
-.profile-nav{padding:14px;}
+#profile-name{color:var(--c-white);font-size:1.15rem;margin-bottom:4px;word-break:break-word;}
+#profile-email{color:rgba(255,255,255,0.65);font-size:0.78rem;word-break:break-all;}
+.profile-nav{padding:12px;}
 .profile-tab{
-  width:100%;display:flex;align-items:center;gap:12px;
-  padding:13px 16px;border-radius:var(--r-md);
-  font-size:0.9rem;font-weight:500;color:var(--c-text-2);
+  width:100%;display:flex;align-items:center;gap:10px;
+  padding:11px 14px;border-radius:var(--r-md);
+  font-size:0.88rem;font-weight:500;color:var(--c-text-2);
   cursor:pointer;transition:all var(--t-fast);
   border:none;background:none;text-align:right;
+  white-space:nowrap;overflow:hidden;
 }
 .profile-tab:hover{background:var(--c-cream);color:var(--c-text);}
 .profile-tab.active{background:rgba(26,74,46,0.08);color:var(--c-forest);font-weight:700;}
@@ -1073,9 +1083,10 @@ body::before{
 .tab-panel.active{display:block;animation:fadeIn 0.3s ease both;}
 .tab-card{
   background:var(--c-white);border:1px solid var(--c-border-l);
-  border-radius:var(--r-lg);padding:32px;
+  border-radius:var(--r-lg);padding:28px;
+  min-width:0;overflow:hidden;
 }
-.tab-card h2{font-size:1.25rem;margin-bottom:26px;}
+.tab-card h2{font-size:1.2rem;margin-bottom:22px;}
 
 /* ══════════════════════════════════════════
    ORDERS
@@ -2146,15 +2157,47 @@ const Currency = {
 };
 
 /* ════════════════════════════════
-   STORAGE
+   STORAGE — per-user isolation
+   Keys: technopalm_{uid}_{key} for user data
+         technopalm_{key} for global/guest data
 ════════════════════════════════ */
 const Storage = (() => {
-  const P = 'agri_';
-  const set = (k,v) => { try { localStorage.setItem(P+k, JSON.stringify(v)); } catch(e) {} };
-  const get = (k, fb=null) => { try { const r=localStorage.getItem(P+k); return r!==null ? JSON.parse(r) : fb; } catch(e) { return fb; } };
-  const loadAll = () => ({ user: get('user',null), cart: get('cart',[]), orders: get('orders',[]) });
-  const sync = (k,v) => set(k,v);
-  return { set, get, sync, loadAll };
+  const BASE = 'technopalm_';
+
+  // Get current user uid (set by Firebase module)
+  const _uid = () => window.__fbUser?.uid || 'guest';
+  const _key = (k) => {
+    // user-specific keys
+    if(k === 'cart' || k === 'orders') return BASE + _uid() + '_' + k;
+    // global keys (user profile stored in Firebase, not localStorage)
+    return BASE + k;
+  };
+
+  const set = (k, v) => {
+    try { localStorage.setItem(_key(k), JSON.stringify(v)); } catch(e) {}
+  };
+  const get = (k, fb = null) => {
+    try {
+      const r = localStorage.getItem(_key(k));
+      return r !== null ? JSON.parse(r) : fb;
+    } catch(e) { return fb; }
+  };
+  const loadAll = () => ({
+    user:   get('user', null),
+    cart:   get('cart', []),
+    orders: get('orders', [])
+  });
+  const sync = (k, v) => set(k, v);
+
+  // Called after login to reload this user's data
+  const reloadForUser = () => {
+    const cart   = get('cart',   []);
+    const orders = get('orders', []);
+    Store.setState('cart',   cart);
+    Store.setState('orders', orders);
+  };
+
+  return { set, get, sync, loadAll, reloadForUser };
 })();
 
 /* ════════════════════════════════
@@ -2175,6 +2218,7 @@ const Store = (() => {
 })();
 // Expose Store globally so Firebase module (type="module") can access it
 window.Store = Store;
+window.Storage = Storage;
 
 /* ════════════════════════════════
    PRODUCTS CATALOG
@@ -2359,8 +2403,9 @@ const AuthService = {
     return window._fbAuth.googleLogin();
   },
   logout: async () => {
-    Store.setState('user', null);
     Store.setState('cart', []);
+    Store.setState('orders', []);
+    Store.setState('user', null);
     UI.showToast('تم تسجيل الخروج بنجاح.', 'info');
     if (window._fbAuth) window._fbAuth.logout();
     setTimeout(() => navigate('home'), 600);
@@ -3022,11 +3067,27 @@ document.addEventListener('DOMContentLoaded', () => {
   // Mobile nav toggle
   const mt = document.getElementById('menu-toggle');
   const nl = document.getElementById('nav-links');
+  const closeNav = () => {
+    nl?.classList.remove('open');
+    mt?.classList.remove('open');
+    mt?.setAttribute('aria-expanded','false');
+  };
   if(mt && nl) {
-    mt.addEventListener('click', () => {
+    mt.addEventListener('click', e => {
+      e.stopPropagation();
       const open = nl.classList.toggle('open');
       mt.classList.toggle('open', open);
       mt.setAttribute('aria-expanded', open);
+    });
+    // Close when clicking anywhere outside navbar
+    document.addEventListener('click', e => {
+      if(nl.classList.contains('open') && !e.target.closest('.nav')) {
+        closeNav();
+      }
+    });
+    // Close on Escape
+    document.addEventListener('keydown', e => {
+      if(e.key === 'Escape') closeNav();
     });
   }
 
@@ -3215,6 +3276,8 @@ window._fbAuth = {
       // Set user immediately from Firebase Auth (fast)
       const user = _buildUser(cred.user);
       window.Store?.setState('user', user);
+      // Reload this user's cart & orders from localStorage
+      window.Storage?.reloadForUser();
       // Fetch Firestore profile in background (non-blocking)
       getDoc(doc(_db, 'users', cred.user.uid)).then(snap => {
         if (snap.exists()) {
@@ -3242,6 +3305,7 @@ window._fbAuth = {
       // Set user immediately (fast)
       const user = { ..._buildUser(cred.user), name, avatar };
       window.Store?.setState('user', user);
+      window.Storage?.reloadForUser();
       // Save to Firestore + update profile in background
       Promise.all([
         fbUpdateProfile(cred.user, { displayName: name, photoURL: avatar }),
@@ -3264,6 +3328,7 @@ window._fbAuth = {
       window.__fbUser = r.user;
       const user = _buildUser(r.user);
       window.Store?.setState('user', user);
+      window.Storage?.reloadForUser();
       // Save to Firestore in background
       setDoc(doc(_db, 'users', r.user.uid), {
         name: r.user.displayName, email: r.user.email,
