@@ -2729,8 +2729,8 @@ function initLogin() {
     const r = await AuthService.login({ email, password });
     if(btn) { btn.disabled = false; btn.textContent = 'تسجيل الدخول'; }
     if(r.ok) {
-      // onAuthStateChanged will update Store & navigate — just show toast
-      UI.showToast('تم تسجيل الدخول بنجاح! 👋', 'success');
+      UI.showToast('تم تسجيل الدخول! 👋', 'success');
+      navigate('profile');
     } else {
       UI.showToast(r.error, 'error');
     }
@@ -2751,8 +2751,8 @@ function initLogin() {
     const rr = await AuthService.register({ name, email, password });
     if(btn) { btn.disabled = false; btn.textContent = 'إنشاء الحساب'; }
     if(!rr.ok) { UI.showToast(rr.error, 'error'); return; }
-    // onAuthStateChanged will update Store & navigate
     UI.showToast(`مرحبًا بك في Technopalm! 🌴`, 'success');
+    navigate('profile');
   };
 
   // ── Google login ──
@@ -2762,8 +2762,8 @@ function initLogin() {
       const r = await AuthService.googleLogin();
       gb.disabled = false; gb.style.opacity = '1';
       if(r.ok) {
-        UI.showToast('تم تسجيل الدخول بنجاح! 🌴', 'success');
-        // onAuthStateChanged handles Store update & navigation
+        UI.showToast('أهلًا! تم تسجيل الدخول 🌴', 'success');
+        navigate('profile');
       } else if(r.error) {
         UI.showToast(r.error, 'error');
       }
@@ -3182,7 +3182,14 @@ onAuthStateChanged(_auth, async fbUser => {
 window._fbAuth = {
   login: async ({ email, password }) => {
     try {
-      await signInWithEmailAndPassword(_auth, email, password);
+      const cred = await signInWithEmailAndPassword(_auth, email, password);
+      const user = _buildUser(cred.user);
+      try {
+        const snap = await getDoc(doc(_db, 'users', cred.user.uid));
+        if (snap.exists()) Object.assign(user, snap.data());
+      } catch(e) {}
+      window.__fbUser = cred.user;
+      window.Store?.setState('user', user);
       return { ok: true };
     } catch(e) {
       const m = {
@@ -3197,10 +3204,14 @@ window._fbAuth = {
 
   register: async ({ name, email, password }) => {
     try {
-      const cred = await createUserWithEmailAndPassword(_auth, email, password);
       const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1a4a2e&color=e2c97e&bold=true&size=128`;
+      const cred = await createUserWithEmailAndPassword(_auth, email, password);
       await fbUpdateProfile(cred.user, { displayName: name, photoURL: avatar });
       await setDoc(doc(_db, 'users', cred.user.uid), { name, email, avatar, createdAt: new Date().toISOString() });
+      window.__fbUser = cred.user;
+      const user = _buildUser(cred.user);
+      user.name = name; user.avatar = avatar;
+      window.Store?.setState('user', user);
       return { ok: true };
     } catch(e) {
       const m = {
@@ -3220,6 +3231,9 @@ window._fbAuth = {
         avatar: r.user.photoURL, provider: 'google',
         updatedAt: new Date().toISOString()
       }, { merge: true });
+      window.__fbUser = r.user;
+      const user = _buildUser(r.user);
+      window.Store?.setState('user', user);
       return { ok: true };
     } catch(e) {
       if (e.code === 'auth/popup-closed-by-user') return { ok: false, error: '' };
@@ -3229,7 +3243,6 @@ window._fbAuth = {
 
   logout: async () => {
     await signOut(_auth);
-    // onAuthStateChanged will clear Store
   },
 
   updateProfile: async ({ name }) => {
