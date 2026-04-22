@@ -2553,20 +2553,20 @@ const CartService = (() => {
 ════════════════════════════════ */
 const AuthService = new Proxy({}, {
   get(_, prop) {
+    // isLoggedIn always reads Store directly — no async needed
+    if (prop === 'isLoggedIn') return () => !!Store.getState('user');
     // Firebase module sets window.AuthService once loaded
     const svc = window.AuthService;
     if (svc && typeof svc[prop] !== 'undefined') return svc[prop].bind ? svc[prop].bind(svc) : svc[prop];
-    // Fallback stubs before Firebase loads
-    if (prop === 'isLoggedIn') return () => !!Store.getState('user');
+    // Fallback logout stub
     if (prop === 'logout') return async () => { Store.setState('user', null); navigate('home'); };
-    // For async methods, return a function that waits for Firebase
+    // For other async methods, wait for Firebase module
     return async (...args) => {
-      // Wait up to 5s for Firebase module
-      for(let i=0;i<50;i++){
+      for(let i = 0; i < 50; i++) {
         if(window.AuthService) return window.AuthService[prop](...args);
         await new Promise(r => setTimeout(r, 100));
       }
-      return { ok:false, error:'لم يتم الاتصال بالخادم. تحقق من الإنترنت.' };
+      return { ok: false, error: 'لم يتم الاتصال بالخادم. تحقق من الإنترنت.' };
     };
   }
 });
@@ -2868,13 +2868,13 @@ function initCart() {
   renderCart();
 
   document.getElementById('btn-checkout')?.addEventListener('click', () => {
-    if(!AuthService.isLoggedIn()) { UI.showToast('يرجى تسجيل الدخول للمتابعة.', 'warning'); setTimeout(() => navigate('login'), 1000); return; }
+    if(!!!Store.getState('user')) { UI.showToast('يرجى تسجيل الدخول للمتابعة.', 'warning'); setTimeout(() => navigate('login'), 1000); return; }
     navigate('checkout');
   });
 }
 
 function initCheckout() {
-  if(!AuthService.isLoggedIn()) { UI.showToast('يرجى تسجيل الدخول أولًا.', 'warning'); setTimeout(() => navigate('login'), 800); return; }
+  if(!!!Store.getState('user')) { UI.showToast('يرجى تسجيل الدخول أولًا.', 'warning'); setTimeout(() => navigate('login'), 800); return; }
   if(!CartService.getCart().length) { navigate('cart'); return; }
   let step = 1;
   const steps = [null, document.getElementById('step-1'), document.getElementById('step-2'), document.getElementById('step-3')];
@@ -2916,7 +2916,7 @@ function initCheckout() {
 
 function initLogin() {
   // If already logged in, go to profile immediately
-  if(AuthService.isLoggedIn()) { navigate('profile'); return; }
+  if(Store.getState('user')) { navigate('profile'); return; }
 
   const tabs         = document.querySelectorAll('#page-login .auth-tab');
   const loginForm    = document.getElementById('login-form');
@@ -2958,7 +2958,8 @@ function initLogin() {
     if(btn) { btn.disabled = false; btn.textContent = 'تسجيل الدخول'; }
     if(r.ok) {
       UI.showToast(`أهلًا بك مجددًا، ${r.user.name}! 👋`, 'success');
-      setTimeout(() => navigate('profile'), 900);
+      // Use Promise.resolve to let Store.setState propagate before navigating
+      Promise.resolve().then(() => setTimeout(() => navigate('profile'), 300));
     } else {
       UI.showToast(r.error, 'error');
     }
@@ -2980,7 +2981,7 @@ function initLogin() {
     if(btn) { btn.disabled = false; btn.textContent = 'إنشاء الحساب'; }
     if(!rr.ok) { UI.showToast(rr.error, 'error'); return; }
     UI.showToast(`مرحبًا بك في Technopalm، ${name}! 🌴`, 'success');
-    setTimeout(() => navigate('profile'), 900);
+    Promise.resolve().then(() => setTimeout(() => navigate('profile'), 300));
   };
 
   // ── Google login ──
@@ -2991,7 +2992,7 @@ function initLogin() {
       gb.disabled = false; gb.style.opacity = '1';
       if(r.ok) {
         UI.showToast(`مرحبًا، ${r.user.name}! 🌴`, 'success');
-        setTimeout(() => navigate('profile'), 900);
+        Promise.resolve().then(() => setTimeout(() => navigate('profile'), 300));
       } else if(r.error) {
         UI.showToast(r.error, 'error');
       }
@@ -3000,8 +3001,12 @@ function initLogin() {
 }
 
 function initProfile() {
-  if(!AuthService.isLoggedIn()) { UI.showToast('يرجى تسجيل الدخول.', 'warning'); setTimeout(() => navigate('login'), 800); return; }
   const user = Store.getState('user');
+  if(!user) {
+    UI.showToast('يرجى تسجيل الدخول.', 'warning');
+    setTimeout(() => navigate('login'), 800);
+    return;
+  }
   document.getElementById('profile-avatar').src = user.avatar;
   document.getElementById('profile-name').textContent = user.name;
   document.getElementById('profile-email').textContent = user.email;
